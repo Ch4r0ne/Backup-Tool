@@ -115,9 +115,18 @@ $button2.Size = New-Object Drawing.Size(160, 30)
 $button2.Text = "Delete Backup Job"
 $button2.Add_Click({
     try {
-        # Task Scheduler-Job und .ps1-Datei löschen
+        # Task Scheduler-Job löschen
         Unregister-ScheduledTask -TaskName "BackupJob" -Confirm:$false
+
+        # PowerShell-Skript-Datei im Backup-Tool-Ordner löschen
+        $appDataFolder = [System.IO.Path]::Combine($env:APPDATA, "BackupTool")
+        $psScriptPath = [System.IO.Path]::Combine($appDataFolder, "BackupScript.ps1")
         Remove-Item -Path $psScriptPath -Force -ErrorAction SilentlyContinue
+
+        # Backup-Tool-Ordner unter %AppData% löschen, falls vorhanden
+        if (Test-Path $appDataFolder) {
+            Remove-Item -Path $appDataFolder -Force -Recurse -ErrorAction SilentlyContinue
+        }
 
         [Windows.Forms.MessageBox]::Show("Backup job deleted!")
     } catch {
