@@ -3,14 +3,6 @@ Add-Type -AssemblyName System.Drawing
 
 [Windows.Forms.Application]::EnableVisualStyles()
 
-# Definiere das Verzeichnis für das Backup-Skript
-$scriptDirectory = "C:\BackupTool"
-
-# Erstelle das Verzeichnis, falls es nicht existiert
-if (-not (Test-Path $scriptDirectory)) {
-    New-Item -Path $scriptDirectory -ItemType Directory
-}
-
 $form = New-Object Windows.Forms.Form
 $form.Text = "Backup Tool"
 $form.Size = New-Object Drawing.Size(400, 250)
@@ -78,23 +70,28 @@ $button1.Add_Click({
     }
 
     try {
-        # Aktuelles Datum im gewünschten Format erstellen (z.B. "yyyyMMdd")
-        $currentDate = Get-Date -Format "yyyyMMdd"
-        # Zielpfad mit aktuellem Datum erstellen
-        $destinationPathWithDate = Join-Path -Path $destinationPath -ChildPath $currentDate
-
-        # Task Scheduler konfigurieren, um den Task alle $interval Minuten zu wiederholen
-        schtasks /create /tn "BackupJob" /tr "robocopy `"$sourcePath`" `"$destinationPathWithDate`" /MIR /V /LOG+:C:\BackupLog.txt" /sc minute /mo $interval /ru SYSTEM
-
-        # Überprüfen, ob mehr als $numVersions Versionen vorhanden sind
-        $existingVersions = Get-ChildItem -Path $destinationPath | Where-Object { $_.PSIsContainer } | Sort-Object Name -Descending
-        if ($existingVersions.Count -gt $numVersions) {
-            # Älteste Version löschen, wenn mehr als $numVersions vorhanden sind
-            $versionsToDelete = $existingVersions | Select-Object -Skip $numVersions
-            foreach ($version in $versionsToDelete) {
-                Remove-Item -Path $version.FullName -Recurse -Force
-            }
-        }
+        # PowerShell-Einzeiler erstellen
+        $powershellCommand = @"
+        powershell -Command "& { 
+            `$sourcePath = '$sourcePath'; 
+            `$destinationPath = '$destinationPath'; 
+            `$maxVersions = $numVersions; 
+            `$currentDateTime = Get-Date -Format 'yyyyMMdd-HHmmss'; 
+            `$existingFolders = Get-ChildItem -Path `$destinationPath -Directory | Where-Object { `$_.Name -match '^Backup_\d{8}-\d{6}$' } | Sort-Object Name -Descending; 
+            if (`$existingFolders.Count -ge `$maxVersions) { 
+                `$foldersToDelete = `$existingFolders | Select-Object -Skip `$maxVersions; 
+                foreach (`$folder in `$foldersToDelete) { 
+                    Remove-Item -Path `$folder.FullName -Recurse -Force 
+                } 
+            } 
+            `$newFolderName = 'Backup_' + `$currentDateTime; 
+            `$newFolderPath = Join-Path -Path `$destinationPath -ChildPath `$newFolderName; 
+            New-Item -Path `$newFolderPath -ItemType Directory; 
+            robocopy `$sourcePath `$newFolderPath /MIR /V /LOG+:C:\BackupLog.txt 
+        }"
+"@
+        # Task Scheduler konfigurieren, um den Einzeiler alle $interval Minuten zu wiederholen
+        schtasks /create /tn "BackupJob" /tr "`"$powershellCommand`"" /sc minute /mo $interval /ru SYSTEM
 
         [Windows.Forms.MessageBox]::Show("Backup job created!")
     } catch {
