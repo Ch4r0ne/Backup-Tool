@@ -70,28 +70,36 @@ $button1.Add_Click({
     }
 
     try {
-        # PowerShell-Einzeiler erstellen
-        $powershellCommand = @"
-        powershell -Command "& { 
-            `$sourcePath = '$sourcePath'; 
-            `$destinationPath = '$destinationPath'; 
-            `$maxVersions = $numVersions; 
-            `$currentDateTime = Get-Date -Format 'yyyyMMdd-HHmmss'; 
-            `$existingFolders = Get-ChildItem -Path `$destinationPath -Directory | Where-Object { `$_.Name -match '^Backup_\d{8}-\d{6}$' } | Sort-Object Name -Descending; 
-            if (`$existingFolders.Count -ge `$maxVersions) { 
-                `$foldersToDelete = `$existingFolders | Select-Object -Skip `$maxVersions; 
-                foreach (`$folder in `$foldersToDelete) { 
-                    Remove-Item -Path `$folder.FullName -Recurse -Force 
-                } 
-            } 
-            `$newFolderName = 'Backup_' + `$currentDateTime; 
-            `$newFolderPath = Join-Path -Path `$destinationPath -ChildPath `$newFolderName; 
-            New-Item -Path `$newFolderPath -ItemType Directory; 
-            robocopy `$sourcePath `$newFolderPath /MIR /V /LOG+:C:\BackupLog.txt 
-        }"
+        # PowerShell-Skript in .ps1-Datei im Backup-Tool-Ordner speichern
+        $psScriptContent = @"
+        `$sourcePath = '$sourcePath'
+        `$destinationPath = '$destinationPath'
+        `$maxVersions = $numVersions
+        `$currentDateTime = Get-Date -Format 'yyyyMMdd-HHmmss'
+        `$existingFolders = Get-ChildItem -Path `$destinationPath -Directory | Where-Object { `$_.Name -match '^Backup_\d{8}-\d{6}$' } | Sort-Object Name -Descending
+        if (`$existingFolders.Count -ge `$maxVersions) {
+            `$foldersToDelete = `$existingFolders | Select-Object -Skip `$maxVersions
+            foreach (`$folder in `$foldersToDelete) {
+                Remove-Item -Path `$folder.FullName -Recurse -Force
+            }
+        }
+        `$newFolderName = 'Backup_' + `$currentDateTime
+        `$newFolderPath = Join-Path -Path `$destinationPath -ChildPath `$newFolderName
+        New-Item -Path `$newFolderPath -ItemType Directory
+        robocopy `$sourcePath `$newFolderPath /MIR /V /LOG+:C:\BackupLog.txt
 "@
-        # Task Scheduler konfigurieren, um den Einzeiler alle $interval Minuten zu wiederholen
-        schtasks /create /tn "BackupJob" /tr "`"$powershellCommand`"" /sc minute /mo $interval /ru SYSTEM
+        # Ordner für das Backup-Tool in %AppData% erstellen, falls nicht vorhanden
+        $appDataFolder = [System.IO.Path]::Combine($env:APPDATA, "BackupTool")
+        if (-not (Test-Path $appDataFolder)) {
+            New-Item -Path $appDataFolder -ItemType Directory | Out-Null
+        }
+
+        # PowerShell-Skript in .ps1-Datei im Backup-Tool-Ordner speichern
+        $psScriptPath = [System.IO.Path]::Combine($appDataFolder, "BackupScript.ps1")
+        Set-Content -Path $psScriptPath -Value $psScriptContent
+
+        # Task Scheduler konfigurieren, um das Skript im Backup-Tool-Ordner auszuführen
+        schtasks /create /tn "BackupJob" /tr "powershell.exe -File `"$psScriptPath`"" /sc minute /mo $interval /ru SYSTEM
 
         [Windows.Forms.MessageBox]::Show("Backup job created!")
     } catch {
@@ -107,7 +115,10 @@ $button2.Size = New-Object Drawing.Size(160, 30)
 $button2.Text = "Delete Backup Job"
 $button2.Add_Click({
     try {
+        # Task Scheduler-Job und .ps1-Datei löschen
         Unregister-ScheduledTask -TaskName "BackupJob" -Confirm:$false
+        Remove-Item -Path $psScriptPath -Force -ErrorAction SilentlyContinue
+
         [Windows.Forms.MessageBox]::Show("Backup job deleted!")
     } catch {
         [Windows.Forms.MessageBox]::Show("Error deleting backup job: $_")
