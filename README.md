@@ -2,7 +2,7 @@
 
 This Backup Tool is a simple yet powerful utility designed to automate the process of creating and managing backups for your important files and folders. With an intuitive graphical user interface, it allows you to specify the source and destination paths, set the number of versions to keep, and define the interval between backups. The tool supports creating ZIP archives for your backups, making it easy to compress and organize your data efficiently.
 
-![Backup_Tool.png](Preview/Backup_Tool.png.png)
+![Backup_Tool.png](Preview/Backup_Tool.png)
 
 ## Features
 
