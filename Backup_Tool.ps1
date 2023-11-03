@@ -116,9 +116,13 @@ $button1.Add_Click({
         # Check if a task with the name "BackupJob" already exists
         $existingTask = Get-ScheduledTask -TaskName "BackupJob" -ErrorAction SilentlyContinue
 
-        # If the task already exists, delete it
+        # If the task already exists, delete it and wait until it's deleted
         if ($existingTask -ne $null) {
             Unregister-ScheduledTask -TaskName "BackupJob" -Confirm:$false
+            # Wait until the task is deleted
+            while (Get-ScheduledTask -TaskName "BackupJob" -ErrorAction SilentlyContinue) {
+                Start-Sleep -Seconds 1
+            }
         }
 
         # Save PowerShell script in .ps1 file in the backup tool folder
