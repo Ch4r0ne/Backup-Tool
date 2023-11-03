@@ -5,7 +5,7 @@ Add-Type -AssemblyName System.Drawing
 
 $form = New-Object Windows.Forms.Form
 $form.Text = "Backup Tool"
-$form.Size = New-Object Drawing.Size(400, 250)
+$form.Size = New-Object Drawing.Size(400, 220)
 $form.StartPosition = "CenterScreen"
 
 $label1 = New-Object Windows.Forms.Label
@@ -16,8 +16,22 @@ $form.Controls.Add($label1)
 
 $textBox1 = New-Object Windows.Forms.TextBox
 $textBox1.Location = New-Object Drawing.Point(160, 20)
-$textBox1.Size = New-Object Drawing.Size(200, 20)
+$textBox1.Size = New-Object Drawing.Size(150, 20)
 $form.Controls.Add($textBox1)
+
+$buttonBrowseSource = New-Object Windows.Forms.Button
+$buttonBrowseSource.Location = New-Object Drawing.Point(320, 20)
+$buttonBrowseSource.Size = New-Object Drawing.Size(30, 20)
+$buttonBrowseSource.Text = "..."
+$buttonBrowseSource.Add_Click({
+    $folderBrowserDialog = New-Object Windows.Forms.FolderBrowserDialog
+    $folderBrowserDialog.Description = "Select Source Folder"
+    $folderBrowserDialog.RootFolder = "MyComputer"
+    if ($folderBrowserDialog.ShowDialog() -eq [Windows.Forms.DialogResult]::OK) {
+        $textBox1.Text = $folderBrowserDialog.SelectedPath
+    }
+})
+$form.Controls.Add($buttonBrowseSource)
 
 $label2 = New-Object Windows.Forms.Label
 $label2.Location = New-Object Drawing.Point(10, 50)
@@ -27,8 +41,22 @@ $form.Controls.Add($label2)
 
 $textBox2 = New-Object Windows.Forms.TextBox
 $textBox2.Location = New-Object Drawing.Point(160, 50)
-$textBox2.Size = New-Object Drawing.Size(200, 20)
+$textBox2.Size = New-Object Drawing.Size(150, 20)
 $form.Controls.Add($textBox2)
+
+$buttonBrowseDestination = New-Object Windows.Forms.Button
+$buttonBrowseDestination.Location = New-Object Drawing.Point(320, 50)
+$buttonBrowseDestination.Size = New-Object Drawing.Size(30, 20)
+$buttonBrowseDestination.Text = "..."
+$buttonBrowseDestination.Add_Click({
+    $folderBrowserDialog = New-Object Windows.Forms.FolderBrowserDialog
+    $folderBrowserDialog.Description = "Select Destination Folder"
+    $folderBrowserDialog.RootFolder = "MyComputer"
+    if ($folderBrowserDialog.ShowDialog() -eq [Windows.Forms.DialogResult]::OK) {
+        $textBox2.Text = $folderBrowserDialog.SelectedPath
+    }
+})
+$form.Controls.Add($buttonBrowseDestination)
 
 $label4 = New-Object Windows.Forms.Label
 $label4.Location = New-Object Drawing.Point(10, 80)
@@ -52,10 +80,17 @@ $numericUpDown.Location = New-Object Drawing.Point(160, 110)
 $numericUpDown.Size = New-Object Drawing.Size(80, 20)
 $form.Controls.Add($numericUpDown)
 
+$labelDescription = New-Object Windows.Forms.Label
+$labelDescription.Location = New-Object Drawing.Point(270, 82)
+$labelDescription.Size = New-Object Drawing.Size(150, 20)
+$labelDescription.Text = "ZIP-Archiv:"
+$labelDescription.AutoSize = $true
+$form.Controls.Add($labelDescription)
+
 $checkBox = New-Object Windows.Forms.CheckBox
-$checkBox.Location = New-Object Drawing.Point(10, 170)
-$checkBox.Size = New-Object Drawing.Size(150, 20)
-$checkBox.Text = "Use Zip"
+$checkBox.Location = New-Object Drawing.Point(335, 80)
+$checkBox.Size = New-Object Drawing.Size(80, 20)
+$checkBox.Checked = $true
 $form.Controls.Add($checkBox)
 
 $button1 = New-Object Windows.Forms.Button
