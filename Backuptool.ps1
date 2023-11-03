@@ -98,21 +98,21 @@ $button1.Location = New-Object Drawing.Point(10, 140)
 $button1.Size = New-Object Drawing.Size(180, 30)
 $button1.Text = "Create Backup Job"
 $button1.Add_Click({
-    # Code für das Erstellen des Backup-Jobs hier einfügen
+    # Insert code for creating the backup job here
     $sourcePath = $textBox1.Text.Trim()
     $destinationPath = $textBox2.Text.Trim()
     $numVersions = $numericUpDown2.Value
     $interval = $numericUpDown.Value
     $useZip = $checkBox.Checked
 
-    # Eingabevalidierung
+    # Input validation
     if (-not $sourcePath -or -not $destinationPath) {
         [Windows.Forms.MessageBox]::Show("Invalid paths. Please check your inputs.")
         return
     }
 
     try {
-        # PowerShell-Skript in .ps1-Datei im Backup-Tool-Ordner speichern
+        # Save PowerShell script in .ps1 file in the backup tool folder
         if ($useZip) {
             $psScriptContent = @"
             `$sourcePath = '$sourcePath'
@@ -159,17 +159,17 @@ $button1.Add_Click({
             robocopy `$sourcePath `$newFolderPath /MIR /V /LOG+:C:\BackupLog.txt
 "@
         }
-        # Ordner für das Backup-Tool in %AppData% erstellen, falls nicht vorhanden
+        # Create folder for the backup tool in %AppData% if not available
         $appDataFolder = [System.IO.Path]::Combine($env:APPDATA, "BackupTool")
         if (-not (Test-Path $appDataFolder)) {
             New-Item -Path $appDataFolder -ItemType Directory | Out-Null
         }
 
-        # PowerShell-Skript in .ps1-Datei im Backup-Tool-Ordner speichern
+        # Save PowerShell script in .ps1 file in the backup tool folder
         $psScriptPath = [System.IO.Path]::Combine($appDataFolder, "BackupScript.ps1")
         Set-Content -Path $psScriptPath -Value $psScriptContent
 
-        # Task Scheduler konfigurieren, um das Skript im Backup-Tool-Ordner auszuführen
+        # Configure Task Scheduler to run the script in the backup tool folder
         schtasks /create /tn "BackupJob" /tr "powershell.exe -File `"$psScriptPath`"" /sc minute /mo $interval /ru SYSTEM
 
         [Windows.Forms.MessageBox]::Show("Backup job created!")
@@ -186,15 +186,15 @@ $button2.Size = New-Object Drawing.Size(160, 30)
 $button2.Text = "Delete Backup Job"
 $button2.Add_Click({
     try {
-        # Task Scheduler-Job löschen
+        # Delete Task Scheduler job
         Unregister-ScheduledTask -TaskName "BackupJob" -Confirm:$false
 
-        # PowerShell-Skript-Datei im Backup-Tool-Ordner löschen
+        # Delete PowerShell script file in the backup tool folder
         $appDataFolder = [System.IO.Path]::Combine($env:APPDATA, "BackupTool")
         $psScriptPath = [System.IO.Path]::Combine($appDataFolder, "BackupScript.ps1")
         Remove-Item -Path $psScriptPath -Force -ErrorAction SilentlyContinue
 
-        # Backup-Tool-Ordner unter %AppData% löschen, falls vorhanden
+        # Delete backup tool folder under %AppData%, if present
         if (Test-Path $appDataFolder) {
             Remove-Item -Path $appDataFolder -Force -Recurse -ErrorAction SilentlyContinue
         }
