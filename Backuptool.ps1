@@ -52,6 +52,12 @@ $numericUpDown.Location = New-Object Drawing.Point(160, 110)
 $numericUpDown.Size = New-Object Drawing.Size(80, 20)
 $form.Controls.Add($numericUpDown)
 
+$checkBox = New-Object Windows.Forms.CheckBox
+$checkBox.Location = New-Object Drawing.Point(10, 170)
+$checkBox.Size = New-Object Drawing.Size(150, 20)
+$checkBox.Text = "Use Zip"
+$form.Controls.Add($checkBox)
+
 $button1 = New-Object Windows.Forms.Button
 $button1.Location = New-Object Drawing.Point(10, 140)
 $button1.Size = New-Object Drawing.Size(180, 30)
@@ -62,6 +68,7 @@ $button1.Add_Click({
     $destinationPath = $textBox2.Text.Trim()
     $numVersions = $numericUpDown2.Value
     $interval = $numericUpDown.Value
+    $useZip = $checkBox.Checked
 
     # Eingabevalidierung
     if (-not $sourcePath -or -not $destinationPath) {
@@ -71,23 +78,52 @@ $button1.Add_Click({
 
     try {
         # PowerShell-Skript in .ps1-Datei im Backup-Tool-Ordner speichern
-        $psScriptContent = @"
-        `$sourcePath = '$sourcePath'
-        `$destinationPath = '$destinationPath'
-        `$maxVersions = $numVersions
-        `$currentDateTime = Get-Date -Format 'yyyyMMdd-HHmmss'
-        `$existingFolders = Get-ChildItem -Path `$destinationPath -Directory | Where-Object { `$_.Name -match '^Backup_\d{8}-\d{6}$' } | Sort-Object Name -Descending
-        if (`$existingFolders.Count -ge `$maxVersions) {
-            `$foldersToDelete = `$existingFolders | Select-Object -Skip `$maxVersions
-            foreach (`$folder in `$foldersToDelete) {
-                Remove-Item -Path `$folder.FullName -Recurse -Force
+        if ($useZip) {
+            $psScriptContent = @"
+            `$sourcePath = '$sourcePath'
+            `$destinationPath = '$destinationPath'
+            `$maxVersions = $numVersions
+            `$currentDateTime = Get-Date -Format 'yyyyMMdd-HHmmss'
+            `$newFolderName = 'Backup_' + `$currentDateTime
+            `$newFolderPath = Join-Path -Path `$destinationPath -ChildPath `$newFolderName
+            New-Item -Path `$newFolderPath -ItemType Directory
+            robocopy `$sourcePath `$newFolderPath /MIR /V /LOG+:C:\BackupLog.txt
+
+            # Dateien in ein Zip-Archiv komprimieren
+            `$zipFileName = Join-Path -Path `$destinationPath -ChildPath "`$newFolderName.zip"
+            Compress-Archive -Path `$newFolderPath -DestinationPath `$zipFileName -Force
+
+            # Ordner nach dem Erstellen des Zip-Archivs löschen
+            Remove-Item -Path `$newFolderPath -Recurse -Force
+
+            # Prüfen und löschen älterer Zip-Archive, wenn die maximale Anzahl erreicht ist
+            `$existingZips = Get-ChildItem -Path `$destinationPath -Filter 'Backup_*.zip' | Sort-Object LastWriteTime -Descending
+            if (`$existingZips.Count -ge `$maxVersions) {
+                `$zipsToDelete = `$existingZips | Select-Object -Skip `$maxVersions
+                foreach (`$zip in `$zipsToDelete) {
+                    Remove-Item -Path `$zip.FullName -Force
+                }
             }
-        }
-        `$newFolderName = 'Backup_' + `$currentDateTime
-        `$newFolderPath = Join-Path -Path `$destinationPath -ChildPath `$newFolderName
-        New-Item -Path `$newFolderPath -ItemType Directory
-        robocopy `$sourcePath `$newFolderPath /MIR /V /LOG+:C:\BackupLog.txt
 "@
+        } else {
+            $psScriptContent = @"
+            `$sourcePath = '$sourcePath'
+            `$destinationPath = '$destinationPath'
+            `$maxVersions = $numVersions
+            `$currentDateTime = Get-Date -Format 'yyyyMMdd-HHmmss'
+            `$existingFolders = Get-ChildItem -Path `$destinationPath -Directory | Where-Object { `$_.Name -match '^Backup_\d{8}-\d{6}$' } | Sort-Object Name -Descending
+            if (`$existingFolders.Count -ge `$maxVersions) {
+                `$foldersToDelete = `$existingFolders | Select-Object -Skip `$maxVersions
+                foreach (`$folder in `$foldersToDelete) {
+                    Remove-Item -Path `$folder.FullName -Recurse -Force
+                }
+            }
+            `$newFolderName = 'Backup_' + `$currentDateTime
+            `$newFolderPath = Join-Path -Path `$destinationPath -ChildPath `$newFolderName
+            New-Item -Path `$newFolderPath -ItemType Directory
+            robocopy `$sourcePath `$newFolderPath /MIR /V /LOG+:C:\BackupLog.txt
+"@
+        }
         # Ordner für das Backup-Tool in %AppData% erstellen, falls nicht vorhanden
         $appDataFolder = [System.IO.Path]::Combine($env:APPDATA, "BackupTool")
         if (-not (Test-Path $appDataFolder)) {
