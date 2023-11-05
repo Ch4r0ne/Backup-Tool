@@ -4,7 +4,7 @@ Add-Type -AssemblyName System.Drawing
 [Windows.Forms.Application]::EnableVisualStyles()
 
 $form = New-Object Windows.Forms.Form
-$form.Text = "Backup Tool"
+$form.Text = "BackupJobSchedulerGUI"
 $form.Size = New-Object Drawing.Size(400, 220)
 $form.StartPosition = "CenterScreen"
 
