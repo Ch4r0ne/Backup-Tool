@@ -107,14 +107,27 @@ $button1.Add_Click({
     $interval = $numericUpDown.Value
     $useZip = $checkBox.Checked
 
+    # Check whether the user has administrator authorisations
+    $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
+
+    if (-not $isAdmin) {
+        [Windows.Forms.MessageBox]::Show("You do not have sufficient authorisations to create the backup job. Please run the programme as an administrator.", "Error", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Error)
+        return
+    }
+
     # Input validation
     if (-not $sourcePath -or -not $destinationPath) {
-        [Windows.Forms.MessageBox]::Show("Invalid paths. Please check your inputs.")
+        [Windows.Forms.MessageBox]::Show("Invalid paths. Please check your entries.", "Error", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Error)
+        return
+    }
+
+    # Check whether Number of Versions and Interval are not 0
+    if ($numVersions -eq 0 -or $interval -eq 0) {
+        [Windows.Forms.MessageBox]::Show("Invalid Numbers. Please check your entries.", "Error", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Error)
         return
     }
 
     try {
-
         # Check if a task with the name "BackupJob" already exists
         $existingTask = Get-ScheduledTask -TaskName "BackupJob" -ErrorAction SilentlyContinue
 
@@ -187,9 +200,13 @@ $button1.Add_Click({
         # Configure Task Scheduler to run the script in the backup tool folder
         schtasks /create /tn "BackupJob" /tr "powershell.exe -File `"$psScriptPath`"" /sc minute /mo $interval /ru SYSTEM
 
-        [Windows.Forms.MessageBox]::Show("Backup job created!")
+        # Open the task scheduling tool after successfully creating the backup job
+        Start-Process "taskschd.msc"
+
+        [Windows.Forms.MessageBox]::Show("Backup job successfully created!", "Success", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Information)
+
     } catch {
-        [Windows.Forms.MessageBox]::Show("Error creating backup job: $_")
+        [Windows.Forms.MessageBox]::Show("Error while creating the backup job: $_", "Error", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Error)
     }
 })
 
@@ -201,24 +218,35 @@ $button2.Size = New-Object Drawing.Size(160, 30)
 $button2.Text = "Delete Backup Job"
 $button2.Add_Click({
     try {
-        # Delete Task Scheduler job
+        # Delete task planner task
         Unregister-ScheduledTask -TaskName "BackupJob" -Confirm:$false
 
-        # Delete PowerShell script file in the backup tool folder
+        # Define paths
         $appDataFolder = [System.IO.Path]::Combine($env:APPDATA, "BackupTool")
         $psScriptPath = [System.IO.Path]::Combine($appDataFolder, "BackupScript.ps1")
-        Remove-Item -Path $psScriptPath -Force -ErrorAction SilentlyContinue
 
-        # Delete backup tool folder under %AppData%, if present
-        if (Test-Path $appDataFolder) {
-            Remove-Item -Path $appDataFolder -Force -Recurse -ErrorAction SilentlyContinue
+        # Check whether the file exists before deleting it
+        if (Test-Path -Path $psScriptPath -PathType Leaf) {
+            Remove-Item -Path $psScriptPath -Force -ErrorAction Stop
+        } else {
+            [Windows.Forms.MessageBox]::Show("There is no backup job.", "Error", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Error)
+            return
         }
 
-        [Windows.Forms.MessageBox]::Show("Backup job deleted!")
+        # Check whether the folder exists before deleting it
+        if (Test-Path $appDataFolder -PathType Container) {
+            Remove-Item -Path $appDataFolder -Force -Recurse -ErrorAction Stop
+            [Windows.Forms.MessageBox]::Show("Backup job successfully deleted!", "Success", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Information)
+        } else {
+            [Windows.Forms.MessageBox]::Show("Backup job not found.", "Error", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Error)
+        }
     } catch {
-        [Windows.Forms.MessageBox]::Show("Error deleting backup job: $_")
+        [Windows.Forms.MessageBox]::Show("Error when deleting the backup job: $_.Exception.Message", "Error", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Error)
     }
 })
+
+
+
 
 $form.Controls.Add($button2)
 
