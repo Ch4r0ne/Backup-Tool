@@ -67,6 +67,7 @@ $form.Controls.Add($label4)
 $numericUpDown2 = New-Object Windows.Forms.NumericUpDown
 $numericUpDown2.Location = New-Object Drawing.Point(160, 80)
 $numericUpDown2.Size = New-Object Drawing.Size(80, 20)
+$numericUpDown2.Maximum = 10000
 $form.Controls.Add($numericUpDown2)
 
 $label3 = New-Object Windows.Forms.Label
@@ -78,6 +79,7 @@ $form.Controls.Add($label3)
 $numericUpDown = New-Object Windows.Forms.NumericUpDown
 $numericUpDown.Location = New-Object Drawing.Point(160, 110)
 $numericUpDown.Size = New-Object Drawing.Size(80, 20)
+$numericUpDown.Maximum = 10000
 $form.Controls.Add($numericUpDown)
 
 $labelDescription = New-Object Windows.Forms.Label
