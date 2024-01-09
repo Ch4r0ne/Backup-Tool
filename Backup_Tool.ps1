@@ -152,14 +152,14 @@ $button1.Add_Click({
             New-Item -Path `$newFolderPath -ItemType Directory
             robocopy `$sourcePath `$newFolderPath /MIR /V /LOG+:C:\BackupLog.txt
 
-            # Dateien in ein Zip-Archiv komprimieren
+            # Compress files into a zip archive
             `$zipFileName = Join-Path -Path `$destinationPath -ChildPath "`$newFolderName.zip"
             Compress-Archive -Path `$newFolderPath -DestinationPath `$zipFileName -Force
 
-            # Ordner nach dem Erstellen des Zip-Archivs löschen
+            # Delete folder after creating the zip archive
             Remove-Item -Path `$newFolderPath -Recurse -Force
 
-            # Prüfen und löschen älterer Zip-Archive, wenn die maximale Anzahl erreicht ist
+            # Check and delete older zip archives when the maximum number has been reached
             `$existingZips = Get-ChildItem -Path `$destinationPath -Filter 'Backup_*.zip' | Sort-Object LastWriteTime -Descending
             if (`$existingZips.Count -ge `$maxVersions) {
                 `$zipsToDelete = `$existingZips | Select-Object -Skip `$maxVersions
@@ -244,9 +244,6 @@ $button2.Add_Click({
         [Windows.Forms.MessageBox]::Show("Error when deleting the backup job: $_.Exception.Message", "Error", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Error)
     }
 })
-
-
-
 
 $form.Controls.Add($button2)
 
